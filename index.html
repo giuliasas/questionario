@@ -1,0 +1,220 @@
+from pathlib import Path
+import base64
+
+img_dir = Path("/mnt/data")
+
+image_files = {
+    "aiutare": "aiutare.png",
+    "ascoltare": "ascoltare.png",
+    "correre": "correre.png",
+    "disegnare": "disegnare.png",
+    "fare": "fare.png",
+    "felice": "felice.png",
+    "giocare": "giocare.png",
+    "gruppo": "gruppo.png",
+    "guardare": "guardare.png",
+    "insegnante": "insegnante di sostegno.png",
+    "mai": "mai.png",
+    "parlare": "parlare.png",
+    "immagine": "pulsante aggiungi immagine alla cartella.png",
+    "qualche": "qualche volta.png",
+    "spesso": "spesso.png",
+    "sempre": "sempre.png",
+    "stanco": "stanco.png",
+    "tranquillo": "tranquillo.png",
+    "poco": "poco.png",
+    "quiz": "quiz a premi.png",
+    "difficile": "difficile.png",
+    "tempo": "tempo.png",
+    "no": "no.png",
+}
+
+def data_uri(name):
+    p = img_dir / image_files[name]
+    if not p.exists():
+        return ""
+    return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode("ascii")
+
+imgs = {k: data_uri(k) for k in image_files}
+
+questions = [
+    ("radio", "q1", "Come ti sei sentito/a?", [
+        ("Felice", "felice"), ("Tranquillo/a", "tranquillo"), ("Stanco/a", "stanco"),
+        ("In difficoltà", "difficile"), ("Parte del gruppo", "gruppo")
+    ]),
+    ("radio", "q2", "Cosa ti è piaciuto di più?", [
+        ("Maneggio", "🐴"), ("Percorso motorio", "correre"), ("Cartellone", "disegnare"),
+        ("Lavoro di gruppo", "gruppo"), ("Quiz a squadre", "quiz"), ("Giochi", "giocare")
+    ]),
+    ("checkbox", "q3", "Cosa ti ha aiutato a capire?", [
+        ("Immagini", "immagine"), ("Muovermi", "correre"),
+        ("Lavorare in gruppo", "gruppo"), ("Ascoltare", "ascoltare"),
+        ("Parlare", "parlare"), ("Giocare", "giocare"), ("Fare", "fare")
+    ]),
+    ("radio", "q4", "Ti sei sentito/a parte del gruppo?", [
+        ("Mai", "mai"), ("Qualche volta", "qualche"), ("Spesso", "spesso"), ("Sempre", "sempre")
+    ]),
+    ("radio", "q5", "Hai aiutato qualcuno?", [
+        ("Sì", "aiutare"), ("Un po’", "poco"), ("No", "no")
+    ]),
+    ("radio", "q6", "Qualcuno ha aiutato te?", [
+        ("Sì", "aiutare"), ("Un po’", "poco"), ("No", "no")
+    ]),
+    ("checkbox", "q7", "Cosa ti ha aiutato a stare meglio?", [
+        ("Agenda visiva", "immagine"), ("Fare pausa", "fare"), ("Insegnante", "insegnante"),
+        ("Compagni", "gruppo"), ("Immagini", "immagine")
+    ]),
+    ("checkbox", "q8", "Come ti piace imparare?", [
+        ("Muovermi", "correre"), ("Immagini", "immagine"), ("Fare", "fare"),
+        ("Parlare", "parlare"), ("Guardare", "guardare"), ("Gruppo", "gruppo"), ("Giocare", "giocare")
+    ]),
+    ("checkbox", "q9", "C’è qualcosa che vorresti rifare?", [
+        ("Maneggio", "🐴"), ("Percorso motorio", "correre"), ("Lavoro di gruppo", "gruppo"),
+        ("Immagini", "immagine"), ("Giochi", "giocare"), ("Quiz", "quiz")
+    ]),
+    ("checkbox", "q10", "Cosa possiamo migliorare?", [
+        ("Spiegazioni", "parlare"), ("Immagini", "immagine"), ("Tempi", "tempo"),
+        ("Gruppo", "gruppo"), ("Attività", "fare"), ("Tutto bene così", "spesso")
+    ]),
+]
+
+def card_html(qtype, qname, label, icon):
+    if icon in imgs and imgs[icon]:
+        visual = f'<img src="{imgs[icon]}" alt="{label}">'
+    else:
+        visual = f'<span class="emoji">{icon}</span>'
+    return f'''<label class="option">
+      <input type="{qtype}" name="{qname}" value="{label}">
+      {visual}
+      <span>{label}</span>
+    </label>'''
+
+sections = []
+for i, (qtype, qname, title, opts) in enumerate(questions, 1):
+    options_html = "\n".join(card_html(qtype, qname, label, icon) for label, icon in opts)
+    sections.append(f'''<section class="question">
+      <h2><b>{i}</b> {title}</h2>
+      <div class="options">{options_html}</div>
+    </section>''')
+
+sections.append('''<section class="question">
+  <h2><b>11</b> Cosa hai scoperto di te?</h2>
+  <p class="help">Puoi scrivere, parlare o rispondere con l’aiuto dell’insegnante.</p>
+  <textarea name="q11" placeholder="Ho scoperto che..."></textarea>
+</section>''')
+
+html = f'''<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Questionario – Il viaggio di Babà</title>
+<style>
+body {{
+  margin:0; font-family:Arial, sans-serif; background:#fff; color:#111;
+}}
+main {{ max-width:1100px; margin:auto; padding:18px; }}
+header {{
+  border:3px solid #111; border-radius:14px; padding:18px; text-align:center;
+  background:#edf7e8; margin-bottom:18px;
+}}
+h1 {{ margin:0; font-size:42px; text-transform:uppercase; }}
+.subtitle {{ color:#2f6b20; font-weight:800; font-size:24px; text-transform:uppercase; }}
+.instructions {{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px;
+  border:2px solid #111; border-radius:12px; padding:12px; margin-bottom:18px;
+}}
+.instructions div {{ background:#f7fbf4; padding:12px; text-align:center; font-weight:bold; border-radius:10px; }}
+.question {{
+  border:3px solid #111; border-radius:14px; overflow:hidden; margin:18px 0; page-break-inside:avoid;
+}}
+.question h2 {{
+  margin:0; padding:12px; background:#edf7e8; border-bottom:3px solid #111;
+  text-transform:uppercase; font-size:24px;
+}}
+.question h2 b {{
+  background:#6aa84f; color:#fff; border-radius:50%; padding:6px 12px; margin-right:8px;
+}}
+.options {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); }}
+.option {{
+  min-height:165px; border-right:2px solid #777; border-bottom:2px solid #777;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; padding:10px; text-align:center; font-weight:900; text-transform:uppercase;
+  cursor:pointer; position:relative;
+}}
+.option:hover {{ background:#f6fff2; }}
+.option input {{ position:absolute; top:8px; left:8px; width:26px; height:26px; accent-color:#6aa84f; }}
+.option img {{ width:86px; height:86px; object-fit:contain; }}
+.emoji {{ font-size:70px; line-height:1; }}
+textarea {{ width:100%; min-height:120px; font-size:20px; padding:12px; border:3px solid #111; border-radius:10px; }}
+.help {{ padding:12px; font-weight:bold; }}
+.actions {{ display:flex; flex-wrap:wrap; gap:10px; margin:22px 0; }}
+button {{ border:3px solid #111; border-radius:12px; padding:12px 18px; font-size:18px; font-weight:bold; cursor:pointer; }}
+.primary {{ background:#6aa84f; color:white; }}
+#risultati {{ display:none; border:3px solid #111; border-radius:12px; padding:14px; background:#f6fff2; white-space:pre-wrap; }}
+@media print {{
+  .actions, #risultati {{ display:none!important; }}
+  main {{ max-width:none; padding:8px; }}
+  .option {{ min-height:120px; }}
+  .option img {{ width:62px; height:62px; }}
+  h1 {{ font-size:28px; }}
+  .subtitle {{ font-size:18px; }}
+}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>🐴 Questionario – Il viaggio di Babà</h1>
+  <div class="subtitle">Come ho vissuto il progetto</div>
+</header>
+
+<section class="instructions">
+  <div>Guarda l’immagine</div>
+  <div>Leggi o ascolta</div>
+  <div>Scegli la risposta</div>
+  <div>Puoi chiedere aiuto</div>
+</section>
+
+<form id="form">
+{''.join(sections)}
+
+<div class="actions">
+  <button type="button" class="primary" onclick="mostraRisposte()">Mostra risposte</button>
+  <button type="button" onclick="window.print()">Stampa scheda</button>
+  <button type="reset">Cancella</button>
+</div>
+<pre id="risultati"></pre>
+</form>
+</main>
+
+<script>
+const labels = {{
+  q1:"Come ti sei sentito/a", q2:"Cosa ti è piaciuto di più", q3:"Cosa ti ha aiutato a capire",
+  q4:"Ti sei sentito/a parte del gruppo", q5:"Hai aiutato qualcuno", q6:"Qualcuno ha aiutato te",
+  q7:"Cosa ti ha aiutato a stare meglio", q8:"Come ti piace imparare",
+  q9:"Cosa vorresti rifare", q10:"Cosa possiamo migliorare", q11:"Cosa hai scoperto di te"
+}};
+function values(name) {{
+  return Array.from(document.querySelectorAll(`[name="${{name}}"]:checked`)).map(x => x.value).join(", ");
+}}
+function mostraRisposte() {{
+  const form = document.getElementById("form");
+  const fd = new FormData(form);
+  let txt = "";
+  for (const k of Object.keys(labels)) {{
+    let v = values(k) || fd.get(k) || "—";
+    txt += labels[k] + ": " + v + "\\n";
+  }}
+  const out = document.getElementById("risultati");
+  out.textContent = txt;
+  out.style.display = "block";
+  out.scrollIntoView({{behavior:"smooth"}});
+}}
+</script>
+</body>
+</html>'''
+
+out = Path("/mnt/data/questionario_baba_udl_caa_completo_aggiornato.html")
+out.write_text(html, encoding="utf-8")
+print(f"Creato: {out}") 
